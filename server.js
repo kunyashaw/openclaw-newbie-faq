@@ -28,15 +28,41 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-  let filePath = path.join(SKILL_DIR, 'web', req.url === '/' ? 'index.html' : req.url);
-  
-  const ext = path.extname(filePath);
+  const rawUrl = req.url || '/';
+  const pathname = rawUrl.split('?')[0].split('#')[0];
+
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(pathname);
+  } catch (err) {
+    log('warn', 'Invalid URL encoding', { url: rawUrl, error: err.message });
+    res.writeHead(400, { 'Content-Type': 'text/html' });
+    res.end('<h1>400 Bad Request</h1>');
+    return;
+  }
+
+  const normalizedPath = path.posix
+    .normalize(decodedPath)
+    .replace(/^(\.\.(\/|\\|$))+/, '');
+  const relativePath = normalizedPath.replace(/^\/+/, '') || 'index.html';
+
+  const webRoot = path.resolve(SKILL_DIR, 'web');
+  const resolvedPath = path.resolve(webRoot, relativePath);
+
+  if (resolvedPath !== webRoot && !resolvedPath.startsWith(webRoot + path.sep)) {
+    log('warn', 'Path traversal attempt blocked', { url: rawUrl });
+    res.writeHead(403, { 'Content-Type': 'text/html' });
+    res.end('<h1>403 Forbidden</h1>');
+    return;
+  }
+
+  const ext = path.extname(resolvedPath);
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
   
-  fs.readFile(filePath, (err, content) => {
+  fs.readFile(resolvedPath, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
-        log('warn', '404 Not Found', { url: req.url });
+        log('warn', '404 Not Found', { url: rawUrl });
         res.writeHead(404, { 'Content-Type': 'text/html' });
         res.end('<h1>404 Not Found</h1>');
       } else {

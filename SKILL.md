@@ -1,6 +1,6 @@
 ---
 name: "openclaw-newbie-faq"
-version: "1.0.43"
+version: "1.0.44"
 displayName: "openclaw新手帮帮忙"
 description: "为刚接触 OpenClaw 的新手提供完整指南。安装后请说"启动新手帮助"来启动34567端口的Web服务。源码：https://github.com/kunyashaw/openclaw-newbie-faq.git"
 entryPoint:
